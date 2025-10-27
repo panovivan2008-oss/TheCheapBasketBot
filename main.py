@@ -1,21 +1,22 @@
-import telebot
-import time
-
 import os
-from dotenv import load_dotenv
+from flask import Flask, request
+import telebot
 
-load_dotenv()
-TOKEN = os.getenv("BOT_TOKEN")
-
+TOKEN = os.getenv("7082898376:AAHbxzKe4HlQMMQMxv31J_lo9olKDoU9MH8")
 bot = telebot.TeleBot(TOKEN)
+app = Flask(__name__)
 
-@bot.message_handler(commands=['start'])
-def start(message):
-    bot.send_message(message.chat.id, "Бот запущен и работает 24/7!")
+@app.route("/" + TOKEN, methods=["POST"])
+def webhook():
+    json_string = request.get_data().decode("utf-8")
+    update = telebot.types.Update.de_json(json_string)
+    bot.process_new_updates([update])
+    return "OK", 200
 
-while True:
-    try:
-        bot.polling(none_stop=True, interval=0)
-    except Exception as e:
-        print("Ошибка:", e)
-        time.sleep(5)
+# Установим webhook на Render
+WEBHOOK_URL = f"https://{os.getenv('RENDER_EXTERNAL_HOSTNAME')}/{TOKEN}"
+bot.remove_webhook()
+bot.set_webhook(url=WEBHOOK_URL)
+
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
