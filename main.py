@@ -3,6 +3,13 @@ from flask import Flask, request
 import telebot
 
 TOKEN = os.getenv("7082898376:AAHbxzKe4HlQMMQMxv31J_lo9olKDoU9MH8")
+import os
+import telebot
+
+# Берём токен из переменных окружения
+TOKEN = os.getenv("BOT_TOKEN")
+
+# Создаём бота
 bot = telebot.TeleBot(TOKEN)
 app = Flask(__name__)
 
