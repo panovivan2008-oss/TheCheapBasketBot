@@ -1,11 +1,13 @@
-from aiogram import Bot, Dispatcher, types, executor
+import os
 import sqlite3
+from aiogram import Bot, Dispatcher, types, executor
 
-# 🔹 ВСТАВЬ сюда свой токен бота
-BOT_TOKEN = "ТВОЙ_БОТ_ТОКЕН"
+# --- Получаем токен и ID админа из .env ---
+BOT_TOKEN = os.getenv("BOT_TOKEN")
+ADMIN_ID = int(os.getenv("ADMIN_ID"))
 
-# 🔹 ВСТАВЬ сюда свой Telegram ID (чтобы видеть подписчиков)
-ADMIN_ID = 6248572934  # <- твой Telegram ID
+if not BOT_TOKEN:
+    raise ValueError("Не найден BOT_TOKEN! Проверь .env и Environment Variables на Render.")
 
 bot = Bot(token=BOT_TOKEN)
 dp = Dispatcher(bot)
@@ -48,10 +50,7 @@ async def start(message: types.Message):
     if is_subscribed(user_id):
         await message.answer("Вы уже подписаны ✅", reply_markup=kb_after_subscribe)
     else:
-        await message.answer(
-            "Привет! Нажмите кнопку ниже, чтобы подписаться на уведомления о товарах.",
-            reply_markup=kb_before_subscribe
-        )
+        await message.answer("Привет! Нажмите кнопку ниже, чтобы подписаться на уведомления о товарах.", reply_markup=kb_before_subscribe)
 
 # --- ПОДПИСКА ---
 @dp.message_handler(lambda m: m.text == "✅ Подписаться")
@@ -81,7 +80,7 @@ async def choose_language(message: types.Message):
         "🇵🇱 Польский": "Wybrałeś język polski 🇵🇱\n\nJestem botem, który może śledzić ceny produktów na platformach: AliExpress, Allegro, Temu, Alibaba, Banggood.\nPo prostu wyślij link — a ja pomogę znaleźć produkt taniej lub powiadomię, jeśli cena spadnie!",
         "🇪🇸 Испанский": "Has seleccionado Español 🇪🇸\n\nSoy un bot que puede rastrear los precios de productos en: AliExpress, Allegro, Temu, Alibaba, Banggood.\nSimplemente envía un enlace — y te ayudaré a encontrar el producto más barato o te avisaré si el precio baja!",
         "🇩🇪 Немецкий": "Du hast Deutsch 🇩🇪 gewählt\n\nIch bin ein Bot, der die Preise von Produkten auf Plattformen wie AliExpress, Allegro, Temu, Alibaba, Banggood verfolgen kann.\nSchicke einfach einen Link — ich helfe dir, das Produkt günstiger zu finden oder benachrichtige, wenn der Preis fällt!",
-        "🇫🇷 Французский": "Vous avez choisi Français 🇫🇷\n\nJe suis un bot qui peut suivre les prix des produits sur : AliExpress, Allegro, Temu, Alibaba, Banggood.\nEnvoyez simplement un lien — et je vous aiderai à trouver le produit moins cher ou vous avertirai si le prix baisse !",
+        "🇫🇷 Французский": "Vous avez choisi Français 🇫🇷\n\nJe suis un bot qui peut suivre les prix de produits sur : AliExpress, Allegro, Temu, Alibaba, Banggood.\nEnvoyez simplement un lien — et je vous aiderai à trouver le produit moins cher ou vous avertirai si le prix baisse !",
         "🇰🇿 Казахский": "Сіз қазақ тілін таңдадыңыз 🇰🇿\n\nМен — AliExpress, Allegro, Temu, Alibaba, Banggood платформаларындағы тауарлардың бағаларын бақылауға арналған ботпын.\nСілтемені жіберіңіз — мен тауарды арзан табуға көмектесемін немесе баға төмендесе хабарлаймын!",
         "🇺🇦 Украинский": "Ви обрали українську 🇺🇦\n\nЯ бот, який може відслідковувати ціни на товари на платформах: AliExpress, Allegro, Temu, Alibaba, Banggood.\nПросто надішліть посилання — і я допоможу знайти товар дешевше або повідомлю, якщо ціна впаде!"
     }
@@ -100,7 +99,6 @@ async def unsubscribe(message: types.Message):
     )
 
 # --- КОМАНДЫ АДМИНА ---
-# /count — количество подписчиков
 @dp.message_handler(commands=["count"])
 async def count_subscribers(message: types.Message):
     if message.from_user.id != ADMIN_ID:
@@ -111,7 +109,6 @@ async def count_subscribers(message: types.Message):
     count = cursor.fetchone()[0]
     await message.answer(f"📊 Сейчас подписано пользователей: {count}")
 
-# /subscribers — список всех подписчиков
 @dp.message_handler(commands=["subscribers"])
 async def show_subscribers(message: types.Message):
     if message.from_user.id != ADMIN_ID:
@@ -120,7 +117,6 @@ async def show_subscribers(message: types.Message):
 
     cursor.execute("SELECT user_id, language FROM subscribers")
     rows = cursor.fetchall()
-
     if not rows:
         await message.answer("Пока нет подписчиков 😢")
         return
@@ -129,7 +125,6 @@ async def show_subscribers(message: types.Message):
     for user_id, lang in rows:
         text += f"👤 ID: {user_id} | Язык: {lang}\n"
 
-    # если слишком длинный текст
     if len(text) > 4000:
         parts = [text[i:i+4000] for i in range(0, len(text), 4000)]
         for part in parts:
@@ -137,34 +132,28 @@ async def show_subscribers(message: types.Message):
     else:
         await message.answer(text)
 
-# --- /broadcast — рассылка для админа ---
+# --- РАССЫЛКА ДЛЯ АДМИНА ---
 @dp.message_handler(commands=["broadcast"])
 async def broadcast(message: types.Message):
     if message.from_user.id != ADMIN_ID:
-        await message.answer("⛔ У вас нет доступа к этой команде.")
+        await message.answer("⛔ Только админ может отправлять рассылку.")
         return
 
-    text_to_send = message.get_args()
-    if not text_to_send:
-        await message.answer("❗ Пожалуйста, укажите текст после команды.\nПример: /broadcast Привет подписчики!")
+    text = message.get_args()
+    if not text:
+        await message.answer("❗ Используйте команду: /broadcast ТЕКСТ_СООБЩЕНИЯ")
         return
 
     cursor.execute("SELECT user_id FROM subscribers")
-    subscribers = cursor.fetchall()
-    
-    success = 0
-    failed = 0
-
-    for (user_id,) in subscribers:
+    users = cursor.fetchall()
+    for (user_id,) in users:
         try:
-            await bot.send_message(user_id, text_to_send)
-            success += 1
-        except Exception:
-            failed += 1
+            await bot.send_message(user_id, text)
+        except:
+            continue
 
-    await message.answer(f"✅ Сообщение отправлено {success} подписчикам.\n❌ Не удалось отправить {failed} пользователям.")
+    await message.answer(f"✅ Сообщение отправлено {len(users)} подписчикам.")
 
 # --- ЗАПУСК БОТА ---
 if __name__ == "__main__":
     executor.start_polling(dp, skip_updates=True)
-
