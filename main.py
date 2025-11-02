@@ -1,5 +1,5 @@
-from aiogram import Bot, Dispatcher, types, executor
-from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
+import telebot
+from telebot import types
 import sqlite3, os
 from dotenv import load_dotenv
 
@@ -7,10 +7,10 @@ load_dotenv()
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 ADMIN_ID = int(os.getenv("ADMIN_ID"))
 
-bot = Bot(token=BOT_TOKEN)
-dp = Dispatcher(bot)
+bot = telebot.TeleBot(BOT_TOKEN)
 
-conn = sqlite3.connect("subscribers.db")
+# --- БАЗА ДАННЫХ ---
+conn = sqlite3.connect("subscribers.db", check_same_thread=False)
 cursor = conn.cursor()
 cursor.execute("""
 CREATE TABLE IF NOT EXISTS subscribers (
@@ -20,79 +20,73 @@ CREATE TABLE IF NOT EXISTS subscribers (
 """)
 conn.commit()
 
-kb_before_subscribe = ReplyKeyboardMarkup(resize_keyboard=True)
-kb_before_subscribe.add(KeyboardButton("✅ Подписаться"))
+# --- КЛАВИАТУРЫ ---
+kb_before_subscribe = types.ReplyKeyboardMarkup(resize_keyboard=True)
+kb_before_subscribe.add("✅ Подписаться")
 
-kb_after_subscribe = ReplyKeyboardMarkup(resize_keyboard=True)
-kb_after_subscribe.add(KeyboardButton("❌ Отписаться"))
+kb_after_subscribe = types.ReplyKeyboardMarkup(resize_keyboard=True)
+kb_after_subscribe.add("❌ Отписаться")
 
-kb_languages = ReplyKeyboardMarkup(resize_keyboard=True)
+kb_languages = types.ReplyKeyboardMarkup(resize_keyboard=True)
 kb_languages.add("🇷🇺 Русский", "🇬🇧 Английский", "🇵🇱 Польский", "🇪🇸 Испанский")
 kb_languages.add("🇩🇪 Немецкий", "🇫🇷 Французский", "🇰🇿 Казахский", "🇺🇦 Украинский")
 
-def is_subscribed(user_id: int) -> bool:
+# --- ПРОВЕРКА ПОДПИСКИ ---
+def is_subscribed(user_id):
     cursor.execute("SELECT 1 FROM subscribers WHERE user_id = ?", (user_id,))
     return cursor.fetchone() is not None
 
-@dp.message_handler(commands=["start"])
-async def start(message: types.Message):
+# --- СТАРТ ---
+@bot.message_handler(commands=["start"])
+def start(message):
     user_id = message.from_user.id
     if is_subscribed(user_id):
-        await message.answer("Вы уже подписаны ✅", reply_markup=kb_after_subscribe)
+        bot.send_message(user_id, "Вы уже подписаны ✅", reply_markup=kb_after_subscribe)
     else:
-        await message.answer("Привет! Нажмите кнопку ниже, чтобы подписаться на уведомления.", reply_markup=kb_before_subscribe)
+        bot.send_message(user_id, "Привет! Нажмите кнопку ниже, чтобы подписаться.", reply_markup=kb_before_subscribe)
 
-@dp.message_handler(lambda m: m.text == "✅ Подписаться")
-async def subscribe(message: types.Message):
+# --- ПОДПИСКА ---
+@bot.message_handler(func=lambda m: m.text == "✅ Подписаться")
+def subscribe(message):
     user_id = message.from_user.id
     cursor.execute("INSERT OR IGNORE INTO subscribers (user_id) VALUES (?)", (user_id,))
     conn.commit()
-    await message.answer("Вы подписались ✅\nВыберите язык:", reply_markup=kb_languages)
+    bot.send_message(user_id, "Вы подписались! Выберите язык:", reply_markup=kb_languages)
 
-@dp.message_handler(lambda m: m.text in [
+# --- ВЫБОР ЯЗЫКА ---
+@bot.message_handler(func=lambda m: m.text in [
     "🇷🇺 Русский","🇬🇧 Английский","🇵🇱 Польский","🇪🇸 Испанский",
     "🇩🇪 Немецкий","🇫🇷 Французский","🇰🇿 Казахский","🇺🇦 Украинский"
 ])
-async def choose_language(message: types.Message):
+def choose_language(message):
     user_id = message.from_user.id
     language = message.text
     cursor.execute("UPDATE subscribers SET language = ? WHERE user_id = ?", (language, user_id))
     conn.commit()
-    await message.answer(f"Вы выбрали язык {language} 🌍", reply_markup=kb_after_subscribe)
+    bot.send_message(user_id, f"Вы выбрали {language}", reply_markup=kb_after_subscribe)
 
-@dp.message_handler(lambda m: m.text == "❌ Отписаться")
-async def unsubscribe(message: types.Message):
-    cursor.execute("DELETE FROM subscribers WHERE user_id = ?", (message.from_user.id,))
+# --- ОТПИСКА ---
+@bot.message_handler(func=lambda m: m.text == "❌ Отписаться")
+def unsubscribe(message):
+    user_id = message.from_user.id
+    cursor.execute("DELETE FROM subscribers WHERE user_id = ?", (user_id,))
     conn.commit()
-    await message.answer("Вы отписались 🔕", reply_markup=kb_before_subscribe)
+    bot.send_message(user_id, "Вы отписались 🔕", reply_markup=kb_before_subscribe)
 
-# Команда для админа: отправить сообщение всем
-@dp.message_handler(commands=["broadcast"])
-async def broadcast(message: types.Message):
+# --- РАССЫЛКА АДМИНОМ ---
+@bot.message_handler(commands=["broadcast"])
+def broadcast(message):
     if message.from_user.id != ADMIN_ID:
-        await message.answer("⛔ У вас нет доступа к этой команде.")
+        bot.reply_to(message, "⛔ У вас нет доступа")
         return
-    text = message.text.replace("/broadcast", "").strip()
-    if not text:
-        await message.answer("✍️ Введите текст после команды /broadcast")
-        return
+    text = message.text.replace("/broadcast ", "")
     cursor.execute("SELECT user_id FROM subscribers")
     users = cursor.fetchall()
-    sent = 0
     for (uid,) in users:
         try:
-            await bot.send_message(uid, text)
-            sent += 1
+            bot.send_message(uid, text)
         except:
             pass
-    await message.answer(f"📢 Рассылка завершена. Отправлено {sent} пользователям.")
 
-@dp.message_handler(commands=["count"])
-async def count_subscribers(message: types.Message):
-    if message.from_user.id == ADMIN_ID:
-        cursor.execute("SELECT COUNT(*) FROM subscribers")
-        count = cursor.fetchone()[0]
-        await message.answer(f"👥 Подписчиков: {count}")
-
-if __name__ == "__main__":
-    executor.start_polling(dp, skip_updates=True)
+# --- ЗАПУСК ---
+bot.infinity_polling()
