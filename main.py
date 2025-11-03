@@ -121,7 +121,7 @@ def handle_language(message):
     lang = message.text
     set_language(uid, lang)
     greetings_map = {
-        "🇷🇺 Русский": (
+       "🇷🇺 Русский": (
         "🇷🇺 Вы выбрали русский язык!\n\n"
         "📦 Отправьте мне ссылку на товар — я буду отслеживать его цену и сообщу, когда она упадёт 💰\n"
         "🕵️ Также я проверю этот товар на других сайтах, чтобы найти где дешевле!\n\n"
@@ -129,102 +129,101 @@ def handle_language(message):
         "• Allegro\n"
         "• Temu\n"
         "• AliExpress\n"
-        "• Bongobongo\n"
+        "• Banggood\n"
         "• Alibaba\n\n"
         "Когда найду дешевле или цена упадёт — сразу уведомлю вас 📲"
     ),
 
     "🇬🇧 Английский": (
-        "🌐 You selected English!\n\n"
-        "📦 Send me a product link — I will track its price and notify you when it drops 💰\n"
-        "🕵️ I’ll also check other stores to find the same item cheaper!\n\n"
-        "Supported stores:\n"
+        "🇬🇧 You selected English!\n\n"
+        "📦 Send me a product link — I’ll track its price and notify you when it drops 💰\n"
+        "🕵️ I’ll also check this product on other sites to find where it’s cheaper!\n\n"
+        "Supported sites:\n"
         "• Allegro\n"
         "• Temu\n"
         "• AliExpress\n"
-        "• Bongobongo\n"
+        "• Banggood\n"
         "• Alibaba\n\n"
-        "You'll get a message as soon as I find it cheaper 📲"
+        "When I find a lower price or a drop — I’ll let you know 📲"
     ),
 
     "🇵🇱 Польский": (
         "🇵🇱 Wybrałeś język polski!\n\n"
         "📦 Wyślij mi link do produktu — będę śledzić jego cenę i dam znać, gdy spadnie 💰\n"
-        "🕵️ Dodatkowo sprawdzę ten sam produkt w innych sklepach, by znaleźć tańsze oferty!\n\n"
-        "Obsługiwane sklepy:\n"
+        "🕵️ Sprawdzę też ten produkt na innych stronach, aby znaleźć tańszą ofertę!\n\n"
+        "Obsługiwane strony:\n"
         "• Allegro\n"
         "• Temu\n"
         "• AliExpress\n"
-        "• Bongobongo\n"
+        "• Banggood\n"
         "• Alibaba\n\n"
-        "Kiedy znajdę taniej lub gdy cena spadnie — natychmiast Cię poinformuję 📲"
+        "Gdy znajdę niższą cenę lub spadek — natychmiast Cię powiadomię 📲"
     ),
 
     "🇪🇸 Испанский": (
-        "🇪🇸 Has seleccionado Español!\n\n"
-        "📦 Envíame un enlace del producto — rastrearé su precio y te avisaré cuando baje 💰\n"
-        "🕵️ También buscaré el mismo artículo en otras tiendas para encontrarlo más barato!\n\n"
-        "Tiendas compatibles:\n"
+        "🇪🇸 ¡Has seleccionado Español!\n\n"
+        "📦 Envíame un enlace de producto — seguiré su precio y te avisaré cuando baje 💰\n"
+        "🕵️ También comprobaré este producto en otros sitios para ver dónde es más barato.\n\n"
+        "Sitios compatibles:\n"
         "• Allegro\n"
         "• Temu\n"
         "• AliExpress\n"
-        "• Bongobongo\n"
+        "• Banggood\n"
         "• Alibaba\n\n"
-        "Te avisaré tan pronto como encuentre una mejor oferta 📲"
+        "Cuando encuentre un precio más bajo o una bajada — te lo notificaré 📲"
     ),
 
     "🇩🇪 Немецкий": (
         "🇩🇪 Du hast Deutsch gewählt!\n\n"
-        "📦 Sende mir einen Produktlink — ich verfolge den Preis und informiere dich, wenn er fällt 💰\n"
-        "🕵️ Ich überprüfe auch andere Shops, um günstigere Angebote zu finden!\n\n"
-        "Unterstützte Shops:\n"
+        "📦 Sende mir den Produktlink — ich verfolge den Preis und informiere dich, wenn er fällt 💰\n"
+        "🕵️ Außerdem überprüfe ich das Produkt auf anderen Websites, um den günstigsten Preis zu finden!\n\n"
+        "Unterstützte Seiten:\n"
         "• Allegro\n"
         "• Temu\n"
         "• AliExpress\n"
-        "• Bongobongo\n"
+        "• Banggood\n"
         "• Alibaba\n\n"
-        "Ich melde mich, sobald ich ein besseres Angebot finde 📲"
+        "Wenn ich einen besseren Preis finde oder der Preis sinkt — bekommst du sofort eine Benachrichtigung 📲"
     ),
 
     "🇫🇷 Французский": (
-        "🇫🇷 Vous avez choisi le français!\n\n"
-        "📦 Envoyez-moi un lien vers le produit — je suivrai son prix et vous avertirai s’il baisse 💰\n"
-        "🕵️ Je vérifierai aussi d'autres boutiques pour trouver le même article à meilleur prix!\n\n"
-        "Sites pris en charge:\n"
+        "🇫🇷 Vous avez choisi Français !\n\n"
+        "📦 Envoyez-moi un lien vers un produit — je suivrai son prix et vous informerai dès qu’il baisse 💰\n"
+        "🕵️ Je vérifierai aussi ce produit sur d’autres sites pour voir où il est moins cher !\n\n"
+        "Sites pris en charge :\n"
         "• Allegro\n"
         "• Temu\n"
         "• AliExpress\n"
-        "• Bongobongo\n"
+        "• Banggood\n"
         "• Alibaba\n\n"
-        "Je vous informerai dès que je trouverai une meilleure offre 📲"
+        "Dès que je trouve un meilleur prix ou une baisse — je vous le dirai 📲"
     ),
 
     "🇰🇿 Казахский": (
         "🇰🇿 Сіз қазақ тілін таңдадыңыз!\n\n"
-        "📦 Маған тауар сілтемесін жіберіңіз — мен бағаны қадағалап, арзандаған кезде хабарлаймын 💰\n"
-        "🕵️ Сондай-ақ басқа сайттардан сол тауардың арзанырақ нұсқаларын іздеймін!\n\n"
+        "📦 Маған тауардың сілтемесін жіберіңіз — мен оның бағасын бақылаймын және арзандағанда хабарлаймын 💰\n"
+        "🕵️ Сондай-ақ мен бұл тауарды басқа сайттардан қарап, арзанырақ нұсқасын табуға тырысамын!\n\n"
         "Қолдау көрсетілетін сайттар:\n"
         "• Allegro\n"
         "• Temu\n"
         "• AliExpress\n"
-        "• Bongobongo\n"
+        "• Banggood\n"
         "• Alibaba\n\n"
-        "Баға төмендесе немесе арзанырақ нұсқа тапсам — дереу хабарлаймын 📲"
+        "Баға түссе немесе арзанырақ табылса — бірден хабарлаймын 📲"
     ),
 
     "🇺🇦 Украинский": (
         "🇺🇦 Ви обрали українську мову!\n\n"
-        "📦 Надішліть мені посилання на товар — я відстежуватиму ціну та повідомлю, коли вона знизиться 💰\n"
-        "🕵️ Також перевірю інші сайти, щоб знайти цей товар дешевше!\n\n"
+        "📦 Надішліть мені посилання на товар — я відстежуватиму його ціну та повідомлю, коли вона знизиться 💰\n"
+        "🕵️ Також я перевірю цей товар на інших сайтах, щоб знайти, де він дешевше!\n\n"
         "Підтримувані сайти:\n"
         "• Allegro\n"
         "• Temu\n"
         "• AliExpress\n"
-        "• Bongobongo\n"
+        "• Banggood\n"
         "• Alibaba\n\n"
-        "Я одразу повідомлю, щойно знайду вигіднішу пропозицію 📲"
-    )
-
+        "Коли знайду нижчу ціну або зниження — одразу повідомлю 📲"
+    ),
     }
     bot.send_message(uid, greetings_map.get(lang, "Язык сохранён."), reply_markup=kb_after)
 
