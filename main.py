@@ -259,23 +259,43 @@ def cmd_subscribers(message):
     bot.reply_to(message, text)
 
 @bot.message_handler(commands=["broadcast"])
-def cmd_broadcast(message):
+def safe_broadcast(message):
     if message.from_user.id != ADMIN_ID:
         bot.reply_to(message, "⛔ У вас нет доступа")
         return
+
     text = message.text.replace("/broadcast", "", 1).strip()
     if not text:
         bot.reply_to(message, "Укажите текст после /broadcast")
         return
+
     users = get_all_subscribers()
-    sent = 0
-    for uid in users:
-        try:
-            bot.send_message(uid, text)
-            sent += 1
-        except Exception:
-            continue
-    bot.reply_to(message, f"✅ Рассылка отправлена {sent} пользователям")
+    failed = []
+
+    # Разбиваем текст на куски <= 4000 символов
+    chunks = [text[i:i+4000] for i in range(0, len(text), 4000)]
+
+    batch_size = 50   # количество пользователей в пакете
+    pause = 1         # пауза между пакетами в секундах
+
+    for i in range(0, len(users), batch_size):
+        batch = users[i:i+batch_size]
+        for uid in batch:
+            for chunk in chunks:
+                try:
+                    bot.send_message(uid, chunk)
+                except Exception as e:
+                    failed.append({"user_id": uid, "error": str(e)})
+        time.sleep(pause)  # пауза между пакетами
+
+    bot.reply_to(message, f"✅ Рассылка завершена. Не дошло: {len(failed)} пользователей")
+    
+    # Сохраняем ошибки в файл
+    if failed:
+        import json
+        with open("broadcast_errors.log", "w", encoding="utf-8") as f:
+            json.dump(failed, f, ensure_ascii=False, indent=2)
+
 
 @bot.message_handler(commands=["status"])
 def cmd_status(message):
