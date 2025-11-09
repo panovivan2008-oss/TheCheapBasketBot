@@ -83,13 +83,84 @@ kb_languages.add("🇩🇪 Немецкий", "🇫🇷 Французский")
 kb_languages.add("🇰🇿 Казахский", "🇺🇦 Украинский")
 
 # ---------- Handlers ----------
+# ---------- Dynamic Keyboards (multilingual) ----------
+def get_keyboards(language):
+    if language == "🇬🇧 Английский":
+        before = types.ReplyKeyboardMarkup(resize_keyboard=True)
+        before.add("✅ Subscribe")
+        after = types.ReplyKeyboardMarkup(resize_keyboard=True)
+        after.add("❌ Unsubscribe")
+    elif language == "🇵🇱 Польский":
+        before = types.ReplyKeyboardMarkup(resize_keyboard=True)
+        before.add("✅ Subskrybuj")
+        after = types.ReplyKeyboardMarkup(resize_keyboard=True)
+        after.add("❌ Anuluj subskrypcję")
+    elif language == "🇪🇸 Испанский":
+        before = types.ReplyKeyboardMarkup(resize_keyboard=True)
+        before.add("✅ Suscribirse")
+        after = types.ReplyKeyboardMarkup(resize_keyboard=True)
+        after.add("❌ Cancelar suscripción")
+    elif language == "🇩🇪 Немецкий":
+        before = types.ReplyKeyboardMarkup(resize_keyboard=True)
+        before.add("✅ Abonnieren")
+        after = types.ReplyKeyboardMarkup(resize_keyboard=True)
+        after.add("❌ Abbestellen")
+    elif language == "🇫🇷 Французский":
+        before = types.ReplyKeyboardMarkup(resize_keyboard=True)
+        before.add("✅ S’abonner")
+        after = types.ReplyKeyboardMarkup(resize_keyboard=True)
+        after.add("❌ Se désabonner")
+    elif language == "🇰🇿 Казахский":
+        before = types.ReplyKeyboardMarkup(resize_keyboard=True)
+        before.add("✅ Жазылу")
+        after = types.ReplyKeyboardMarkup(resize_keyboard=True)
+        after.add("❌ Жазылымнан бас тарту")
+    elif language == "🇺🇦 Украинский":
+        before = types.ReplyKeyboardMarkup(resize_keyboard=True)
+        before.add("✅ Підписатися")
+        after = types.ReplyKeyboardMarkup(resize_keyboard=True)
+        after.add("❌ Відписатися")
+    else:  # 🇷🇺 Русский — по умолчанию
+        before = types.ReplyKeyboardMarkup(resize_keyboard=True)
+        before.add("✅ Подписаться")
+        after = types.ReplyKeyboardMarkup(resize_keyboard=True)
+        after.add("❌ Отписаться")
+    return before, after
+
 @bot.message_handler(commands=["start"])
 def handle_start(message):
     uid = message.from_user.id
     if is_subscribed(uid):
-        bot.send_message(uid, "Вы уже подписаны ✅", reply_markup=kb_after)
-    else:
-        bot.send_message(uid, "Привет! Нажмите кнопку ниже, чтобы подписаться на уведомления о товарах.", reply_markup=kb_before)
+    # Получаем язык пользователя из базы
+    conn = sqlite3.connect(DB_PATH)
+    cur = conn.cursor()
+    cur.execute("SELECT language FROM subscribers WHERE user_id = ?", (uid,))
+    row = cur.fetchone()
+    conn.close()
+    user_lang = row[0] if row and row[0] else "🇷🇺 Русский"
+
+    # Генерируем кнопки для этого языка
+    _, kb_after = get_keyboards(user_lang)
+
+    # Текст для подписанного пользователя
+    greetings = {
+        "🇷🇺 Русский": "Вы уже подписаны ✅",
+        "🇬🇧 Английский": "You are already subscribed ✅",
+        "🇵🇱 Польский": "Już jesteś zapisany ✅",
+        "🇪🇸 Испанский": "Ya estás suscrito ✅",
+        "🇩🇪 Немецкий": "Du bist bereits abonniert ✅",
+        "🇫🇷 Французский": "Vous êtes déjà abonné ✅",
+        "🇰🇿 Казахский": "Сіз бұрыннан жазылдыңыз ✅",
+        "🇺🇦 Украинский": "Ви вже підписані ✅"
+    }
+
+    bot.send_message(uid, greetings.get(user_lang, "Вы уже подписаны ✅"), reply_markup=kb_after)
+
+else:
+    # Для нового пользователя показываем кнопки и текст по умолчанию (русский)
+    kb_before, _ = get_keyboards("🇷🇺 Русский")
+    bot.send_message(uid, "Привет! Нажмите кнопку ниже, чтобы подписаться на уведомления о товарах.", reply_markup=kb_before)
+
 
 @bot.message_handler(commands=["help"])
 def handle_help(message):
