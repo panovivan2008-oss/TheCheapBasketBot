@@ -342,6 +342,7 @@ def safe_broadcast(message):
 
     users = get_all_subscribers()
     failed = []
+    removed_count = 0
 
     # Разбиваем текст на куски <= 4000 символов
     chunks = [text[i:i+4000] for i in range(0, len(text), 4000)]
@@ -350,29 +351,30 @@ def safe_broadcast(message):
     pause = 1         # пауза между пакетами в секундах
 
     for i in range(0, len(users), batch_size):
-    batch = users[i:i+batch_size]
-    for uid in batch:
-        for chunk in chunks:
-            try:
-                bot.send_message(uid, chunk)
-            except Exception as e:
-                # Если бот не может отправить сообщение — удаляем пользователя из базы
-                print(f"❌ Не удалось отправить {uid}: {e}")
-                failed.append({"user_id": uid, "error": str(e)})
+        batch = users[i:i+batch_size]
+        for uid in batch:
+            for chunk in chunks:
+                try:
+                    bot.send_message(uid, chunk)
+                except Exception as e:
+                    failed.append({"user_id": uid, "error": str(e)})
+                    # Автоматически удаляем "мертвого" пользователя
+                    remove_subscriber(uid)
+                    removed_count += 1
+        time.sleep(pause)  # пауза между пакетами
 
-                # Удаляем "мертвого" подписчика из БД
-                remove_subscriber(uid)
-                continue
-    time.sleep(pause)  # пауза между пакетами
+    bot.reply_to(
+        message,
+        f"✅ Рассылка завершена. Не дошло: {len(failed)} пользователей\n"
+        f"🗑 Автоматически удалено из базы: {removed_count}"
+    )
 
-
-    bot.reply_to(message, f"✅ Рассылка завершена. Не дошло: {len(failed)} пользователей")
-    
     # Сохраняем ошибки в файл
     if failed:
         import json
         with open("broadcast_errors.log", "w", encoding="utf-8") as f:
             json.dump(failed, f, ensure_ascii=False, indent=2)
+
 
 
 @bot.message_handler(commands=["status"])
