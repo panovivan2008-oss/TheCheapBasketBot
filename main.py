@@ -279,14 +279,21 @@ def safe_broadcast(message):
     pause = 1         # пауза между пакетами в секундах
 
     for i in range(0, len(users), batch_size):
-        batch = users[i:i+batch_size]
-        for uid in batch:
-            for chunk in chunks:
-                try:
-                    bot.send_message(uid, chunk)
-                except Exception as e:
-                    failed.append({"user_id": uid, "error": str(e)})
-        time.sleep(pause)  # пауза между пакетами
+    batch = users[i:i+batch_size]
+    for uid in batch:
+        for chunk in chunks:
+            try:
+                bot.send_message(uid, chunk)
+            except Exception as e:
+                # Если бот не может отправить сообщение — удаляем пользователя из базы
+                print(f"❌ Не удалось отправить {uid}: {e}")
+                failed.append({"user_id": uid, "error": str(e)})
+
+                # Удаляем "мертвого" подписчика из БД
+                remove_subscriber(uid)
+                continue
+    time.sleep(pause)  # пауза между пакетами
+
 
     bot.reply_to(message, f"✅ Рассылка завершена. Не дошло: {len(failed)} пользователей")
     
