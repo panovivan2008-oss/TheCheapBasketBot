@@ -114,23 +114,14 @@ kb_languages.add("🇰🇿 Казахский", "🇺🇦 Украинский")
 def get_keyboards(language):
     before = types.ReplyKeyboardMarkup(resize_keyboard=True)
     after = types.ReplyKeyboardMarkup(resize_keyboard=True)
-    # before и after кнопки по языкам
-    if language == "🇬🇧 Английский":
-        before.add("✅ Subscribe"); after.add("❌ Unsubscribe")
-    elif language == "🇵🇱 Польский":
-        before.add("✅ Subskrybuj"); after.add("❌ Anuluj subskrypcję")
-    elif language == "🇪🇸 Испанский":
-        before.add("✅ Suscribirse"); after.add("❌ Cancelar suscripción")
-    elif language == "🇩🇪 Немецкий":
-        before.add("✅ Abonnieren"); after.add("❌ Abbestellen")
-    elif language == "🇫🇷 Французский":
-        before.add("✅ S’abonner"); after.add("❌ Se désabonner")
-    elif language == "🇰🇿 Казахский":
-        before.add("✅ Жазылу"); after.add("❌ Жазылымнан бас тарту")
-    elif language == "🇺🇦 Украинский":
-        before.add("✅ Підписатися"); after.add("❌ Відписатися")
-    else:
-        before.add("✅ Подписаться"); after.add("❌ Отписаться")
+    if language == "🇬🇧 Английский": before.add("✅ Subscribe"); after.add("❌ Unsubscribe")
+    elif language == "🇵🇱 Польский": before.add("✅ Subskrybuj"); after.add("❌ Anuluj subskrypcję")
+    elif language == "🇪🇸 Испанский": before.add("✅ Suscribirse"); after.add("❌ Cancelar suscripción")
+    elif language == "🇩🇪 Немецкий": before.add("✅ Abonnieren"); after.add("❌ Abbestellen")
+    elif language == "🇫🇷 Французский": before.add("✅ S’abonner"); after.add("❌ Se désabonner")
+    elif language == "🇰🇿 Казахский": before.add("✅ Жазылу"); after.add("❌ Жазылымнан бас тарту")
+    elif language == "🇺🇦 Украинский": before.add("✅ Підписатися"); after.add("❌ Відписатися")
+    else: before.add("✅ Подписаться"); after.add("❌ Отписаться")
     return before, after
 
 def get_marketing_keyboard():
@@ -184,12 +175,9 @@ def handle_subscribe(message):
         kb_before_user, _ = get_keyboards(user_lang)
         bot.send_message(uid, "Вы уже подписаны ✅", reply_markup=kb_before_user)
         return
-
     add_subscriber(uid)
-    kb_languages_user, _ = get_keyboards("🇷🇺 Русский")
-    bot.send_message(uid, "Выберите язык:", reply_markup=kb_languages_user)
-    kb_marketing = get_marketing_keyboard()
-    bot.send_message(uid, "Хотите получать рекламные уведомления? (можно изменить позже)", reply_markup=kb_marketing)
+    bot.send_message(uid, "Выберите язык:", reply_markup=kb_languages)
+    bot.send_message(uid, "Хотите получать рекламные уведомления? (можно изменить позже)", reply_markup=get_marketing_keyboard())
 
 @bot.message_handler(func=lambda m: m.text in [
     "🇷🇺 Русский","🇬🇧 Английский","🇵🇱 Польский","🇪🇸 Испанский",
@@ -198,49 +186,39 @@ def handle_language(message):
     uid = message.from_user.id
     lang = message.text
     set_language(uid, lang)
-    greetings_map = {
+    # Представление возможностей бота
+    presentations = {
         "🇷🇺 Русский": (
             "🇷🇺 Вы выбрали русский язык!\n\n"
             "📦 Отправьте мне ссылку на товар — я буду отслеживать его цену и сообщу, когда она упадёт 💰\n"
-            "🕵️ Также я проверю этот товар на других сайтах, чтобы найти где дешевле!\n\n"
+            "🕵️ Также проверю этот товар на других сайтах, чтобы найти где дешевле!\n\n"
             "Поддерживаемые сайты:\n"
-            "• Allegro\n"
-            "• Temu\n"
-            "• AliExpress\n"
-            "• Banggood\n"
-            "• Alibaba\n\n"
+            "• Allegro\n• Temu\n• AliExpress\n• Banggood\n• Alibaba\n\n"
             "Когда найду дешевле или цена упадёт — сразу уведомлю вас 📲"
         ),
         "🇬🇧 Английский": (
             "🇬🇧 You selected English!\n\n"
             "📦 Send me a product link — I’ll track its price and notify you when it drops 💰\n"
             "🕵️ I’ll also check this product on other sites to find where it’s cheaper!\n\n"
-            "Supported sites:\n"
-            "• Allegro\n"
-            "• Temu\n"
-            "• AliExpress\n"
-            "• Banggood\n"
-            "• Alibaba\n\n"
+            "Supported sites:\n• Allegro\n• Temu\n• AliExpress\n• Banggood\n• Alibaba\n\n"
             "When I find a lower price or a drop — I’ll let you know 📲"
         ),
-        # Добавь остальные языки по аналогии...
+        # Добавь другие языки аналогично
     }
     _, kb_after_user = get_keyboards(lang)
-    bot.send_message(uid, greetings_map.get(lang, "Язык сохранён."), reply_markup=kb_after_user)
+    bot.send_message(uid, presentations.get(lang, "Язык сохранён."), reply_markup=kb_after_user)
 
 @bot.message_handler(func=lambda m: m.text in ["✅ Разрешаю рассылку", "❌ Не хочу рассылку", "Изменить позже"])
 def handle_marketing_choice(message):
     uid = message.from_user.id
-    text = message.text
-    if text == "✅ Разрешаю рассылку":
+    if message.text == "✅ Разрешаю рассылку":
         set_marketing_consent(uid, 1)
         bot.send_message(uid, "Вы согласились на рассылку ✅", reply_markup=kb_after)
-    elif text == "❌ Не хочу рассылку":
+    elif message.text == "❌ Не хочу рассылку":
         set_marketing_consent(uid, 0)
         bot.send_message(uid, "Вы отказались от рассылки ❌", reply_markup=kb_after)
-    elif text == "Изменить позже":
-        kb_marketing = get_marketing_keyboard()
-        bot.send_message(uid, "Вы можете изменить своё решение о рассылке:", reply_markup=kb_marketing)
+    elif message.text == "Изменить позже":
+        bot.send_message(uid, "Вы можете изменить своё решение о рассылке:", reply_markup=get_marketing_keyboard())
 
 @bot.message_handler(func=lambda m: m.text == "❌ Отписаться")
 def handle_unsubscribe(message):
@@ -251,68 +229,45 @@ def handle_unsubscribe(message):
 # ===== Admin commands =====
 @bot.message_handler(commands=["count"])
 def cmd_count(message):
-    if message.from_user.id != ADMIN_ID:
-        bot.reply_to(message, "⛔ У вас нет доступа")
-        return
-    n = len(get_all_subscribers())
-    bot.reply_to(message, f"📊 Подписчиков: {n}")
+    if message.from_user.id != ADMIN_ID: return bot.reply_to(message, "⛔ У вас нет доступа")
+    bot.reply_to(message, f"📊 Подписчиков: {len(get_all_subscribers())}")
 
 @bot.message_handler(commands=["subscribers"])
 def cmd_subscribers(message):
-    if message.from_user.id != ADMIN_ID:
-        bot.reply_to(message, "⛔ У вас нет доступа")
-        return
+    if message.from_user.id != ADMIN_ID: return bot.reply_to(message, "⛔ У вас нет доступа")
     conn = sqlite3.connect(DB_PATH)
     cur = conn.cursor()
     cur.execute("SELECT user_id, language FROM subscribers")
     rows = cur.fetchall()
     conn.close()
-    if not rows:
-        bot.reply_to(message, "Пока нет подписчиков.")
-        return
+    if not rows: return bot.reply_to(message, "Пока нет подписчиков.")
     text = "Список подписчиков:\n\n" + "\n".join(f"{r[0]} | {r[1] or '—'}" for r in rows)
     bot.reply_to(message, text)
 
 @bot.message_handler(commands=["broadcast"])
 def safe_broadcast(message):
-    if message.from_user.id != ADMIN_ID:
-        bot.reply_to(message, "⛔ У вас нет доступа")
-        return
+    if message.from_user.id != ADMIN_ID: return bot.reply_to(message, "⛔ У вас нет доступа")
     text = message.text.replace("/broadcast", "", 1).strip()
-    if not text:
-        bot.reply_to(message, "Укажите текст после /broadcast")
-        return
-    users = get_all_subscribers()
-    failed = []
-    removed_count = 0
+    if not text: return bot.reply_to(message, "Укажите текст после /broadcast")
+    users = get_all_subscribers(); failed = []; removed_count = 0
     chunks = [text[i:i+4000] for i in range(0, len(text), 4000)]
-    batch_size = 50
-    pause = 1
-    for i in range(0, len(users), batch_size):
-        batch = users[i:i+batch_size]
+    for i in range(0, len(users), 50):
+        batch = users[i:i+50]
         for uid in batch:
             for chunk in chunks:
-                try:
-                    bot.send_message(uid, chunk)
-                except:
-                    failed.append(uid)
-                    remove_subscriber(uid)
-                    removed_count += 1
-        time.sleep(pause)
+                try: bot.send_message(uid, chunk)
+                except: failed.append(uid); remove_subscriber(uid); removed_count += 1
+        time.sleep(1)
     bot.reply_to(message, f"✅ Рассылка завершена. Не дошло: {len(failed)} пользователей\n🗑 Автоматически удалено: {removed_count}")
 
 @bot.message_handler(commands=["status"])
 def cmd_status(message):
-    if message.from_user.id != ADMIN_ID:
-        bot.reply_to(message, "⛔ У вас нет доступа")
-        return
-    users = get_all_subscribers()
-    bot.reply_to(message, f"Бот живой. Подписчиков: {len(users)}")
+    if message.from_user.id != ADMIN_ID: return bot.reply_to(message, "⛔ У вас нет доступа")
+    bot.reply_to(message, f"Бот живой. Подписчиков: {len(get_all_subscribers())}")
 
 # ===== Flask app =====
 @app.route("/", methods=["GET"])
-def index():
-    return "OK", 200
+def index(): return "OK", 200
 
 @app.route(f"/{BOT_TOKEN}", methods=["POST"])
 def webhook():
