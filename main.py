@@ -1,5 +1,8 @@
 # main.py
 import os
+
+# Создаём папку /mnt/data, если её нет
+os.makedirs("/mnt/data", exist_ok=True)
 import sqlite3
 import datetime
 import time
