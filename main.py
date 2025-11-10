@@ -13,7 +13,7 @@ load_dotenv()
 # ===== Настройки =====
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 ADMIN_ID = int(os.getenv("ADMIN_ID", "0"))
-WEBHOOK_URL = os.getenv("WEBHOOK_URL")  # https://your-service.onrender.com/<BOT_TOKEN>
+WEBHOOK_URL = os.getenv("WEBHOOK_URL")
 
 if not BOT_TOKEN:
     raise RuntimeError("BOT_TOKEN не найден в окружении!")
@@ -186,14 +186,12 @@ def handle_language(message):
     uid = message.from_user.id
     lang = message.text
     set_language(uid, lang)
-    # Представление возможностей бота
     presentations = {
         "🇷🇺 Русский": (
             "🇷🇺 Вы выбрали русский язык!\n\n"
             "📦 Отправьте мне ссылку на товар — я буду отслеживать его цену и сообщу, когда она упадёт 💰\n"
             "🕵️ Также проверю этот товар на других сайтах, чтобы найти где дешевле!\n\n"
-            "Поддерживаемые сайты:\n"
-            "• Allegro\n• Temu\n• AliExpress\n• Banggood\n• Alibaba\n\n"
+            "Поддерживаемые сайты:\n• Allegro\n• Temu\n• AliExpress\n• Banggood\n• Alibaba\n\n"
             "Когда найду дешевле или цена упадёт — сразу уведомлю вас 📲"
         ),
         "🇬🇧 Английский": (
