@@ -21,7 +21,7 @@ if not BOT_TOKEN:
 bot = telebot.TeleBot(BOT_TOKEN)
 app = Flask(__name__)
 
-DB_PATH = "subscribers.db"
+DB_PATH = "/mnt/data/subscribers.db"
 
 # ===== Database helpers =====
 def init_db():
