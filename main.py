@@ -1,16 +1,16 @@
 # main.py
 import os
 import sqlite3
+import datetime
+import time
 from flask import Flask, request
 import telebot
 from telebot import types
 from dotenv import load_dotenv
-import datetime
-import time
-import json
 
 load_dotenv()
 
+# ===== Настройки =====
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 ADMIN_ID = int(os.getenv("ADMIN_ID", "0"))
 WEBHOOK_URL = os.getenv("WEBHOOK_URL")  # https://your-service.onrender.com/<BOT_TOKEN>
@@ -19,10 +19,11 @@ if not BOT_TOKEN:
     raise RuntimeError("BOT_TOKEN не найден в окружении!")
 
 bot = telebot.TeleBot(BOT_TOKEN)
+app = Flask(__name__)
 
-# ---------- Database helpers ----------
 DB_PATH = "subscribers.db"
 
+# ===== Database helpers =====
 def init_db():
     conn = sqlite3.connect(DB_PATH)
     cur = conn.cursor()
@@ -30,7 +31,8 @@ def init_db():
     CREATE TABLE IF NOT EXISTS subscribers (
         user_id INTEGER PRIMARY KEY,
         language TEXT,
-        marketing_consent INTEGER DEFAULT 0
+        marketing_consent INTEGER DEFAULT 0,
+        consent_ts TEXT
     )
     """)
     conn.commit()
@@ -45,35 +47,38 @@ def is_subscribed(user_id: int) -> bool:
     return res is not None
 
 def add_subscriber(user_id: int, marketing_consent: bool = False):
+    now = datetime.datetime.utcnow().isoformat()
     conn = sqlite3.connect(DB_PATH)
     cur = conn.cursor()
-    now = datetime.datetime.utcnow().isoformat()
     cur.execute("""
-        INSERT INTO subscribers (user_id, language, marketing_consent)
-        VALUES (?, '', ?)
-        ON CONFLICT(user_id) DO UPDATE SET marketing_consent=excluded.marketing_consent
-    """, (user_id, 1 if marketing_consent else 0))
+        INSERT INTO subscribers (user_id, language, marketing_consent, consent_ts)
+        VALUES (?, '', ?, ?)
+        ON CONFLICT(user_id) DO UPDATE SET
+            marketing_consent=excluded.marketing_consent,
+            consent_ts=excluded.consent_ts
+    """, (user_id, 1 if marketing_consent else 0, now))
     conn.commit()
     conn.close()
 
 def set_language(user_id: int, language: str):
     conn = sqlite3.connect(DB_PATH)
     cur = conn.cursor()
-    cur.execute("UPDATE subscribers SET language = ? WHERE user_id = ?", (language, user_id))
+    cur.execute("UPDATE subscribers SET language=? WHERE user_id=?", (language, user_id))
     conn.commit()
     conn.close()
 
 def set_marketing_consent(user_id: int, consent: int):
+    now = datetime.datetime.utcnow().isoformat()
     conn = sqlite3.connect(DB_PATH)
     cur = conn.cursor()
-    cur.execute("UPDATE subscribers SET marketing_consent = ? WHERE user_id = ?", (consent, user_id))
+    cur.execute("UPDATE subscribers SET marketing_consent=?, consent_ts=? WHERE user_id=?", (consent, now, user_id))
     conn.commit()
     conn.close()
 
 def remove_subscriber(user_id: int):
     conn = sqlite3.connect(DB_PATH)
     cur = conn.cursor()
-    cur.execute("DELETE FROM subscribers WHERE user_id = ?", (user_id,))
+    cur.execute("DELETE FROM subscribers WHERE user_id=?", (user_id,))
     conn.commit()
     conn.close()
 
@@ -85,7 +90,15 @@ def get_all_subscribers():
     conn.close()
     return [r[0] for r in rows]
 
-# ---------- Keyboards ----------
+def get_user_language(user_id: int):
+    conn = sqlite3.connect(DB_PATH)
+    cur = conn.cursor()
+    cur.execute("SELECT language FROM subscribers WHERE user_id=?", (user_id,))
+    row = cur.fetchone()
+    conn.close()
+    return row[0] if row and row[0] else "🇷🇺 Русский"
+
+# ===== Keyboards =====
 kb_before = types.ReplyKeyboardMarkup(resize_keyboard=True)
 kb_before.add(types.KeyboardButton("✅ Подписаться"))
 
@@ -98,46 +111,41 @@ kb_languages.add("🇵🇱 Польский", "🇪🇸 Испанский")
 kb_languages.add("🇩🇪 Немецкий", "🇫🇷 Французский")
 kb_languages.add("🇰🇿 Казахский", "🇺🇦 Украинский")
 
-# ---------- Dynamic Keyboards ----------
 def get_keyboards(language):
+    before = types.ReplyKeyboardMarkup(resize_keyboard=True)
+    after = types.ReplyKeyboardMarkup(resize_keyboard=True)
+    # before и after кнопки по языкам
     if language == "🇬🇧 Английский":
-        before = types.ReplyKeyboardMarkup(resize_keyboard=True); before.add("✅ Subscribe")
-        after = types.ReplyKeyboardMarkup(resize_keyboard=True); after.add("❌ Unsubscribe")
+        before.add("✅ Subscribe"); after.add("❌ Unsubscribe")
     elif language == "🇵🇱 Польский":
-        before = types.ReplyKeyboardMarkup(resize_keyboard=True); before.add("✅ Subskrybuj")
-        after = types.ReplyKeyboardMarkup(resize_keyboard=True); after.add("❌ Anuluj subskrypcję")
+        before.add("✅ Subskrybuj"); after.add("❌ Anuluj subskrypcję")
     elif language == "🇪🇸 Испанский":
-        before = types.ReplyKeyboardMarkup(resize_keyboard=True); before.add("✅ Suscribirse")
-        after = types.ReplyKeyboardMarkup(resize_keyboard=True); after.add("❌ Cancelar suscripción")
+        before.add("✅ Suscribirse"); after.add("❌ Cancelar suscripción")
     elif language == "🇩🇪 Немецкий":
-        before = types.ReplyKeyboardMarkup(resize_keyboard=True); before.add("✅ Abonnieren")
-        after = types.ReplyKeyboardMarkup(resize_keyboard=True); after.add("❌ Abbestellen")
+        before.add("✅ Abonnieren"); after.add("❌ Abbestellen")
     elif language == "🇫🇷 Французский":
-        before = types.ReplyKeyboardMarkup(resize_keyboard=True); before.add("✅ S’abonner")
-        after = types.ReplyKeyboardMarkup(resize_keyboard=True); after.add("❌ Se désabonner")
+        before.add("✅ S’abonner"); after.add("❌ Se désabonner")
     elif language == "🇰🇿 Казахский":
-        before = types.ReplyKeyboardMarkup(resize_keyboard=True); before.add("✅ Жазылу")
-        after = types.ReplyKeyboardMarkup(resize_keyboard=True); after.add("❌ Жазылымнан бас тарту")
+        before.add("✅ Жазылу"); after.add("❌ Жазылымнан бас тарту")
     elif language == "🇺🇦 Украинский":
-        before = types.ReplyKeyboardMarkup(resize_keyboard=True); before.add("✅ Підписатися")
-        after = types.ReplyKeyboardMarkup(resize_keyboard=True); after.add("❌ Відписатися")
+        before.add("✅ Підписатися"); after.add("❌ Відписатися")
     else:
-        before = types.ReplyKeyboardMarkup(resize_keyboard=True); before.add("✅ Подписаться")
-        after = types.ReplyKeyboardMarkup(resize_keyboard=True); after.add("❌ Отписаться")
+        before.add("✅ Подписаться"); after.add("❌ Отписаться")
     return before, after
 
-# ---------- Handlers ----------
+def get_marketing_keyboard():
+    kb = types.ReplyKeyboardMarkup(resize_keyboard=True, one_time_keyboard=True)
+    kb.add("✅ Разрешаю рассылку", "❌ Не хочу рассылку")
+    kb.add("Изменить позже")
+    return kb
+
+# ===== Handlers =====
 @bot.message_handler(commands=["start"])
 def handle_start(message):
     uid = message.from_user.id
     if is_subscribed(uid):
-        conn = sqlite3.connect(DB_PATH)
-        cur = conn.cursor()
-        cur.execute("SELECT language FROM subscribers WHERE user_id = ?", (uid,))
-        row = cur.fetchone()
-        conn.close()
-        user_lang = row[0] if row and row[0] else "🇷🇺 Русский"
-        _, kb_after_lang = get_keyboards(user_lang)
+        user_lang = get_user_language(uid)
+        _, kb_after_user = get_keyboards(user_lang)
         greetings = {
             "🇷🇺 Русский": "Вы уже подписаны ✅",
             "🇬🇧 Английский": "You are already subscribed ✅",
@@ -148,10 +156,10 @@ def handle_start(message):
             "🇰🇿 Казахский": "Сіз бұрыннан жазылдыңыз ✅",
             "🇺🇦 Украинский": "Ви вже підписані ✅"
         }
-        bot.send_message(uid, greetings.get(user_lang, "Вы уже подписаны ✅"), reply_markup=kb_after_lang)
+        bot.send_message(uid, greetings.get(user_lang, "Вы уже подписаны ✅"), reply_markup=kb_after_user)
     else:
-        kb_before_lang, _ = get_keyboards("🇷🇺 Русский")
-        bot.send_message(uid, "Привет! Нажмите кнопку ниже, чтобы подписаться на уведомления о товарах.", reply_markup=kb_before_lang)
+        kb_before_user, _ = get_keyboards("🇷🇺 Русский")
+        bot.send_message(uid, "Привет! Нажмите кнопку ниже, чтобы подписаться на уведомления о товарах.", reply_markup=kb_before_user)
 
 @bot.message_handler(commands=["help"])
 def handle_help(message):
@@ -172,73 +180,75 @@ def handle_help(message):
 def handle_subscribe(message):
     uid = message.from_user.id
     if is_subscribed(uid):
-        conn = sqlite3.connect(DB_PATH)
-        cur = conn.cursor()
-        cur.execute("SELECT language FROM subscribers WHERE user_id = ?", (uid,))
-        row = cur.fetchone()
-        conn.close()
-        user_lang = row[0] if row and row[0] else "🇷🇺 Русский"
-        kb_before_lang, _ = get_keyboards(user_lang)
-        bot.send_message(uid, "Вы уже подписаны ✅", reply_markup=kb_before_lang)
+        user_lang = get_user_language(uid)
+        kb_before_user, _ = get_keyboards(user_lang)
+        bot.send_message(uid, "Вы уже подписаны ✅", reply_markup=kb_before_user)
         return
 
     add_subscriber(uid)
+    kb_languages_user, _ = get_keyboards("🇷🇺 Русский")
+    bot.send_message(uid, "Выберите язык:", reply_markup=kb_languages_user)
+    kb_marketing = get_marketing_keyboard()
+    bot.send_message(uid, "Хотите получать рекламные уведомления? (можно изменить позже)", reply_markup=kb_marketing)
 
-    # Inline кнопки согласия на маркетинг
-    kb = types.InlineKeyboardMarkup()
-    kb.add(
-        types.InlineKeyboardButton("✅ Да, хочу рекламу", callback_data=f"marketing_yes:{uid}"),
-        types.InlineKeyboardButton("❌ Нет, только уведомления", callback_data=f"marketing_no:{uid}")
-    )
-    bot.send_message(uid, "Хотите получать рекламные уведомления? (можно изменить позже)", reply_markup=kb)
-
-    # Кнопки выбора языка
-    kb_langs = types.ReplyKeyboardMarkup(resize_keyboard=True)
-    kb_langs.add("🇷🇺 Русский", "🇬🇧 Английский")
-    kb_langs.add("🇵🇱 Польский", "🇪🇸 Испанский")
-    kb_langs.add("🇩🇪 Немецкий", "🇫🇷 Французский")
-    kb_langs.add("🇰🇿 Казахский", "🇺🇦 Украинский")
-    bot.send_message(uid, "Выберите язык:", reply_markup=kb_langs)
-
-# Выбор языка
 @bot.message_handler(func=lambda m: m.text in [
     "🇷🇺 Русский","🇬🇧 Английский","🇵🇱 Польский","🇪🇸 Испанский",
-    "🇩🇪 Немецкий","🇫🇷 Французский","🇰🇿 Казахский","🇺🇦 Украинский"
-])
+    "🇩🇪 Немецкий","🇫🇷 Французский","🇰🇿 Казахский","🇺🇦 Украинский"])
 def handle_language(message):
     uid = message.from_user.id
     lang = message.text
     set_language(uid, lang)
-
     greetings_map = {
-       "🇷🇺 Русский": (
-        "🇷🇺 Вы выбрали русский язык!\n\n"
-        "📦 Отправьте мне ссылку на товар — я буду отслеживать его цену и сообщу, когда она упадёт 💰\n"
-        "🕵️ Также я проверю этот товар на других сайтах, чтобы найти где дешевле!\n\n"
-        "Поддерживаемые сайты:\n"
-        "• Allegro\n• Temu\n• AliExpress\n• Banggood\n• Alibaba\n\n"
-        "Когда найду дешевле или цена упадёт — сразу уведомлю вас 📲"
-    ),
-    "🇬🇧 Английский": (
-        "🇬🇧 You selected English!\n\n"
-        "📦 Send me a product link — I’ll track its price and notify you when it drops 💰\n"
-        "🕵️ I’ll also check this product on other sites to find where it’s cheaper!\n\n"
-        "Supported sites:\n• Allegro\n• Temu\n• AliExpress\n• Banggood\n• Alibaba\n\n"
-        "When I find a lower price or a drop — I’ll let you know 📲"
-    ),
-    # ... аналогично для остальных языков
+        "🇷🇺 Русский": (
+            "🇷🇺 Вы выбрали русский язык!\n\n"
+            "📦 Отправьте мне ссылку на товар — я буду отслеживать его цену и сообщу, когда она упадёт 💰\n"
+            "🕵️ Также я проверю этот товар на других сайтах, чтобы найти где дешевле!\n\n"
+            "Поддерживаемые сайты:\n"
+            "• Allegro\n"
+            "• Temu\n"
+            "• AliExpress\n"
+            "• Banggood\n"
+            "• Alibaba\n\n"
+            "Когда найду дешевле или цена упадёт — сразу уведомлю вас 📲"
+        ),
+        "🇬🇧 Английский": (
+            "🇬🇧 You selected English!\n\n"
+            "📦 Send me a product link — I’ll track its price and notify you when it drops 💰\n"
+            "🕵️ I’ll also check this product on other sites to find where it’s cheaper!\n\n"
+            "Supported sites:\n"
+            "• Allegro\n"
+            "• Temu\n"
+            "• AliExpress\n"
+            "• Banggood\n"
+            "• Alibaba\n\n"
+            "When I find a lower price or a drop — I’ll let you know 📲"
+        ),
+        # Добавь остальные языки по аналогии...
     }
-    _, kb_after_lang = get_keyboards(lang)
-    bot.send_message(uid, greetings_map.get(lang, "Язык сохранён."), reply_markup=kb_after_lang)
+    _, kb_after_user = get_keyboards(lang)
+    bot.send_message(uid, greetings_map.get(lang, "Язык сохранён."), reply_markup=kb_after_user)
 
-# Отписка
+@bot.message_handler(func=lambda m: m.text in ["✅ Разрешаю рассылку", "❌ Не хочу рассылку", "Изменить позже"])
+def handle_marketing_choice(message):
+    uid = message.from_user.id
+    text = message.text
+    if text == "✅ Разрешаю рассылку":
+        set_marketing_consent(uid, 1)
+        bot.send_message(uid, "Вы согласились на рассылку ✅", reply_markup=kb_after)
+    elif text == "❌ Не хочу рассылку":
+        set_marketing_consent(uid, 0)
+        bot.send_message(uid, "Вы отказались от рассылки ❌", reply_markup=kb_after)
+    elif text == "Изменить позже":
+        kb_marketing = get_marketing_keyboard()
+        bot.send_message(uid, "Вы можете изменить своё решение о рассылке:", reply_markup=kb_marketing)
+
 @bot.message_handler(func=lambda m: m.text == "❌ Отписаться")
 def handle_unsubscribe(message):
     uid = message.from_user.id
     remove_subscriber(uid)
     bot.send_message(uid, "Вы отписались 🔕", reply_markup=kb_before)
 
-# --- Admin commands ---
+# ===== Admin commands =====
 @bot.message_handler(commands=["count"])
 def cmd_count(message):
     if message.from_user.id != ADMIN_ID:
@@ -284,18 +294,12 @@ def safe_broadcast(message):
             for chunk in chunks:
                 try:
                     bot.send_message(uid, chunk)
-                except Exception as e:
-                    failed.append({"user_id": uid, "error": str(e)})
+                except:
+                    failed.append(uid)
                     remove_subscriber(uid)
                     removed_count += 1
         time.sleep(pause)
-    bot.reply_to(
-        message,
-        f"✅ Рассылка завершена. Не дошло: {len(failed)} пользователей\n🗑 Автоматически удалено: {removed_count}"
-    )
-    if failed:
-        with open("broadcast_errors.log", "w", encoding="utf-8") as f:
-            json.dump(failed, f, ensure_ascii=False, indent=2)
+    bot.reply_to(message, f"✅ Рассылка завершена. Не дошло: {len(failed)} пользователей\n🗑 Автоматически удалено: {removed_count}")
 
 @bot.message_handler(commands=["status"])
 def cmd_status(message):
@@ -305,9 +309,7 @@ def cmd_status(message):
     users = get_all_subscribers()
     bot.reply_to(message, f"Бот живой. Подписчиков: {len(users)}")
 
-# ---------- Flask app ----------
-app = Flask(__name__)
-
+# ===== Flask app =====
 @app.route("/", methods=["GET"])
 def index():
     return "OK", 200
@@ -319,16 +321,14 @@ def webhook():
     bot.process_new_updates([update])
     return "OK", 200
 
-# ---------- Startup ----------
+# ===== Startup =====
 init_db()
-
 if WEBHOOK_URL:
     try: bot.remove_webhook()
     except: pass
-    ok = bot.set_webhook(url=WEBHOOK_URL)
-    print("set_webhook ->", ok, "WEBHOOK_URL:", WEBHOOK_URL)
+    bot.set_webhook(url=WEBHOOK_URL)
 else:
-    print("WEBHOOK_URL не задан — установите переменную окружения WEBHOOK_URL на Render")
+    print("WEBHOOK_URL не задан")
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
