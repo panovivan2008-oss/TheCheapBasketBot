@@ -165,15 +165,64 @@ def get_main_keyboard(user_id: int):
 
 # ===== Presentations =====
 PRESENTATIONS = {
-    "🇷🇺 Русский": "🇷🇺 Вы выбрали русский язык!\n\n📦 Отправьте мне ссылку на товар...",
-    "🇬🇧 Английский": "🇬🇧 You selected English!\n\n📦 Send me a product link...",
-    "🇵🇱 Польский": "🇵🇱 Wybrałeś język polski!\n\n📦 Wyślij mi link do produktu...",
-    "🇪🇸 Испанский": "🇪🇸 ¡Has seleccionado español!\n\n📦 Envíame un enlace de producto...",
-    "🇩🇪 Немецкий": "🇩🇪 Sie haben Deutsch gewählt!\n\n📦 Senden Sie mir einen Produktlink...",
-    "🇫🇷 Французский": "🇫🇷 Vous avez choisi le français!\n\n📦 Envoyez-moi un lien de produit...",
-    "🇰🇿 Казахский": "🇰🇿 Қазақ тілін таңдадыңыз!\n\n📦 Өнімге сілтемені жіберіңіз...",
-    "🇺🇦 Украинский": "🇺🇦 Ви обрали українську мову!\n\n📦 Надішліть мені посилання на товар..."
+    "🇷🇺 Русский": (
+        "🇷🇺 Вы выбрали русский язык!\n\n"
+        "📦 Отправьте мне ссылку на товар — я буду отслеживать его цену и сообщу, когда она упадёт 💰\n"
+        "🕵️ Также проверю этот товар на других сайтах, чтобы найти где дешевле!\n\n"
+        "Поддерживаемые сайты:\n• Allegro\n• Temu\n• AliExpress\n• Banggood\n• Alibaba\n\n"
+        "Когда найду дешевле или цена упадёт — сразу уведомлю вас 📲"
+    ),
+    "🇬🇧 Английский": (
+        "🇬🇧 You selected English!\n\n"
+        "📦 Send me a product link — I’ll track its price and notify you when it drops 💰\n"
+        "🕵️ I’ll also check this product on other sites to find where it’s cheaper!\n\n"
+        "Supported sites:\n• Allegro\n• Temu\n• AliExpress\n• Banggood\n• Alibaba\n\n"
+        "When I find a lower price or a drop — I’ll let you know 📲"
+    ),
+    "🇵🇱 Польский": (
+        "🇵🇱 Wybrałeś język polski!\n\n"
+        "📦 Wyślij mi link do produktu — będę śledzić jego cenę i powiadomię Cię, gdy spadnie 💰\n"
+        "🕵️ Sprawdzę też ten produkt na innych stronach, aby znaleźć lepszą cenę!\n\n"
+        "Obsługiwane strony:\n• Allegro\n• Temu\n• AliExpress\n• Banggood\n• Alibaba\n\n"
+        "Gdy znajdę niższą cenę lub spadek — od razu Cię powiadomię 📲"
+    ),
+    "🇪🇸 Испанский": (
+        "🇪🇸 ¡Has seleccionado español!\n\n"
+        "📦 Envíame un enlace de producto — rastrearé su precio y te avisaré cuando baje 💰\n"
+        "🕵️ También comprobaré este producto en otros sitios para encontrarlo más barato!\n\n"
+        "Sitios compatibles:\n• Allegro\n• Temu\n• AliExpress\n• Banggood\n• Alibaba\n\n"
+        "Cuando encuentre un precio más bajo o una caída, te lo notificaré 📲"
+    ),
+    "🇩🇪 Немецкий": (
+        "🇩🇪 Sie haben Deutsch gewählt!\n\n"
+        "📦 Senden Sie mir einen Produktlink — ich werde den Preis verfolgen und Sie benachrichtigen, wenn er fällt 💰\n"
+        "🕵️ Ich überprüfe auch dieses Produkt auf anderen Seiten, um es günstiger zu finden!\n\n"
+        "Unterstützte Seiten:\n• Allegro\n• Temu\n• AliExpress\n• Banggood\n• Alibaba\n\n"
+        "Wenn ich einen niedrigeren Preis oder Rabatt finde — werde ich Sie sofort informieren 📲"
+    ),
+    "🇫🇷 Французский": (
+        "🇫🇷 Vous avez choisi le français!\n\n"
+        "📦 Envoyez-moi un lien de produit — je suivrai son prix et vous informerai lorsqu'il baissera 💰\n"
+        "🕵️ Je vérifierai également ce produit sur d'autres sites pour trouver moins cher!\n\n"
+        "Sites pris en charge:\n• Allegro\n• Temu\n• AliExpress\n• Banggood\n• Alibaba\n\n"
+        "Quand je trouve un prix plus bas ou une baisse — je vous préviendrai immédiatement 📲"
+    ),
+    "🇰🇿 Казахский": (
+        "🇰🇿 Қазақ тілін таңдадыңыз!\n\n"
+        "📦 Өнімге сілтемені жіберіңіз — мен оның бағасын қадағалаймын және ол төмендегенде хабарлаймын 💰\n"
+        "🕵️ Сондай-ақ өнімді басқа сайттардан тексеріп, қайда арзан екенін табамын!\n\n"
+        "Қолдау көрсетілетін сайттар:\n• Allegro\n• Temu\n• AliExpress\n• Banggood\n• Alibaba\n\n"
+        "Төмен баға немесе жеңілдік тапсам — дереу хабарлаймын 📲"
+    ),
+    "🇺🇦 Украинский": (
+        "🇺🇦 Ви обрали українську мову!\n\n"
+        "📦 Надішліть мені посилання на товар — я відстежуватиму його ціну та повідомлю, коли вона впаде 💰\n"
+        "🕵️ Також перевірю цей товар на інших сайтах, щоб знайти, де дешевше!\n\n"
+        "Підтримувані сайти:\n• Allegro\n• Temu\n• AliExpress\n• Banggood\n• Alibaba\n\n"
+        "Коли знайду дешевше або ціна впаде — відразу повідомлю вас 📲"
+    )
 }
+
 
 # ===== Handlers =====
 @bot.message_handler(commands=["start"])
