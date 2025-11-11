@@ -277,6 +277,23 @@ def cmd_count(message):
         return
     bot.reply_to(message, f"📊 Подписчиков: {len(get_all_subscribers())}")
 
+@bot.message_handler(commands=["help"])
+def handle_help(message):
+    if message.from_user.id != ADMIN_ID:
+        bot.reply_to(message, "⛔ У вас нет доступа")
+        return
+
+    text = (
+        "📌 Админские команды:\n"
+        "/start - старт\n"
+        "/count - количество подписчиков\n"
+        "/subscribers - список подписчиков\n"
+        "/broadcast <текст> - рассылка всем подписчикам\n"
+        "/status - диагностика\n"
+        "/debug - подробная информация о подписчиках\n"
+    )
+    bot.send_message(message.from_user.id, text)
+
 # ===== Flask webhook =====
 @app.route("/", methods=["GET"])
 def index():
