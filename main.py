@@ -29,7 +29,7 @@ if not BOT_TOKEN:
 bot = telebot.TeleBot(BOT_TOKEN)
 app = Flask(__name__)
 
-DB_PATH = "/mnt/data/subscribers.db"
+DB_PATH = "subscribers.db"
 
 # ===== Broadcast lock =====
 # Защита от параллельных рассылок
