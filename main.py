@@ -3,12 +3,20 @@ import os
 import sqlite3
 import datetime
 import time
+import logging
 from flask import Flask, request
 import telebot
 from telebot import types
 from dotenv import load_dotenv
 
 load_dotenv()
+
+# ===== Logging =====
+# Логи будут видны в Render logs
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(message)s"
+)
 
 # ===== Настройки =====
 BOT_TOKEN = os.getenv("BOT_TOKEN")
@@ -23,81 +31,116 @@ app = Flask(__name__)
 
 DB_PATH = "/mnt/data/subscribers.db"
 
+# ===== Broadcast lock =====
+# Защита от параллельных рассылок
+is_broadcasting = False
+
 # ===== Database helpers =====
 def init_db():
-    conn = sqlite3.connect(DB_PATH)
-    cur = conn.cursor()
-    cur.execute("""
-    CREATE TABLE IF NOT EXISTS subscribers (
-        user_id INTEGER PRIMARY KEY,
-        language TEXT DEFAULT '',
-        marketing_consent INTEGER DEFAULT 0,
-        consent_ts TEXT
-    )
-    """)
-    conn.commit()
-    conn.close()
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        cur = conn.cursor()
+        cur.execute("""
+        CREATE TABLE IF NOT EXISTS subscribers (
+            user_id INTEGER PRIMARY KEY,
+            language TEXT DEFAULT '',
+            marketing_consent INTEGER DEFAULT 0,
+            consent_ts TEXT
+        )
+        """)
+        conn.commit()
+        conn.close()
+        logging.info("init_db: база инициализирована")
+    except Exception as e:
+        logging.exception(f"init_db: ошибка при инициализации базы: {e}")
+        raise
 
 def is_subscribed(user_id: int) -> bool:
-    conn = sqlite3.connect(DB_PATH)
-    cur = conn.cursor()
-    cur.execute("SELECT 1 FROM subscribers WHERE user_id = ?", (user_id,))
-    res = cur.fetchone()
-    conn.close()
-    return res is not None
-    
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        cur = conn.cursor()
+        cur.execute("SELECT 1 FROM subscribers WHERE user_id = ?", (user_id,))
+        res = cur.fetchone()
+        conn.close()
+        return res is not None
+    except Exception as e:
+        logging.exception(f"is_subscribed: ошибка DB для user {user_id}: {e}")
+        return False
+
 def add_subscriber(user_id: int):
     """Добавляем пользователя в базу (язык пустой до выбора) и логируем."""
     now = datetime.datetime.utcnow().isoformat()
-    conn = sqlite3.connect(DB_PATH)
-    cur = conn.cursor()
-    cur.execute("""
-        INSERT INTO subscribers (user_id, language, marketing_consent, consent_ts)
-        VALUES (?, '', 0, ?)
-        ON CONFLICT(user_id) DO NOTHING
-    """, (user_id, now))
-    conn.commit()
-    conn.close()
-    print(f"Добавлен подписчик: {user_id} в {now}")
-
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        cur = conn.cursor()
+        cur.execute("""
+            INSERT INTO subscribers (user_id, language, marketing_consent, consent_ts)
+            VALUES (?, '', 0, ?)
+            ON CONFLICT(user_id) DO NOTHING
+        """, (user_id, now))
+        conn.commit()
+        conn.close()
+        logging.info(f"add_subscriber: добавлен подписчик {user_id} в {now}")
+    except Exception as e:
+        logging.exception(f"add_subscriber: ошибка при добавлении {user_id}: {e}")
 
 def set_language(user_id: int, language: str):
-    conn = sqlite3.connect(DB_PATH)
-    cur = conn.cursor()
-    cur.execute("UPDATE subscribers SET language=? WHERE user_id=?", (language, user_id))
-    conn.commit()
-    conn.close()
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        cur = conn.cursor()
+        cur.execute("UPDATE subscribers SET language=? WHERE user_id=?", (language, user_id))
+        conn.commit()
+        conn.close()
+        logging.info(f"set_language: user={user_id} language={language}")
+    except Exception as e:
+        logging.exception(f"set_language: ошибка для user={user_id}: {e}")
 
 def get_user_language(user_id: int):
-    conn = sqlite3.connect(DB_PATH)
-    cur = conn.cursor()
-    cur.execute("SELECT language FROM subscribers WHERE user_id=?", (user_id,))
-    row = cur.fetchone()
-    conn.close()
-    return row[0] if row and row[0] else ""
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        cur = conn.cursor()
+        cur.execute("SELECT language FROM subscribers WHERE user_id=?", (user_id,))
+        row = cur.fetchone()
+        conn.close()
+        return row[0] if row and row[0] else ""
+    except Exception as e:
+        logging.exception(f"get_user_language: ошибка для user={user_id}: {e}")
+        return ""
 
 def set_marketing_consent(user_id: int, consent: int):
     now = datetime.datetime.utcnow().isoformat()
-    conn = sqlite3.connect(DB_PATH)
-    cur = conn.cursor()
-    cur.execute("UPDATE subscribers SET marketing_consent=?, consent_ts=? WHERE user_id=?", (consent, now, user_id))
-    conn.commit()
-    conn.close()
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        cur = conn.cursor()
+        cur.execute("UPDATE subscribers SET marketing_consent=?, consent_ts=? WHERE user_id=?", (consent, now, user_id))
+        conn.commit()
+        conn.close()
+        logging.info(f"set_marketing_consent: user={user_id} consent={consent}")
+    except Exception as e:
+        logging.exception(f"set_marketing_consent: ошибка для user={user_id}: {e}")
 
 def remove_subscriber(user_id: int):
-    conn = sqlite3.connect(DB_PATH)
-    cur = conn.cursor()
-    cur.execute("DELETE FROM subscribers WHERE user_id=?", (user_id,))
-    conn.commit()
-    conn.close()
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        cur = conn.cursor()
+        cur.execute("DELETE FROM subscribers WHERE user_id=?", (user_id,))
+        conn.commit()
+        conn.close()
+        logging.info(f"remove_subscriber: удалён user={user_id}")
+    except Exception as e:
+        logging.exception(f"remove_subscriber: ошибка при удалении user={user_id}: {e}")
 
 def get_all_subscribers():
-    conn = sqlite3.connect(DB_PATH)
-    cur = conn.cursor()
-    cur.execute("SELECT user_id FROM subscribers")
-    rows = cur.fetchall()
-    conn.close()
-    return [r[0] for r in rows]
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        cur = conn.cursor()
+        cur.execute("SELECT user_id FROM subscribers")
+        rows = cur.fetchall()
+        conn.close()
+        return [r[0] for r in rows]
+    except Exception as e:
+        logging.exception(f"get_all_subscribers: ошибка при чтении базы: {e}")
+        return []
 
 # ===== Keyboards =====
 def kb_subscribe_default():
@@ -201,7 +244,16 @@ def handle_help(message):
     )
     bot.send_message(message.from_user.id, text)
 
-@bot.message_handler(func=lambda m: m.text == "✅ Подписаться")
+@bot.message_handler(func=lambda m: m.text in [
+    "✅ Подписаться",          # Русский
+    "✅ Subscribe",            # Английский
+    "✅ Subskrybuj",           # Польский
+    "✅ Suscribirse",          # Испанский
+    "✅ Abonnieren",           # Немецкий
+    "✅ S’abonner",            # Французский
+    "✅ Жазылу",               # Казахский
+    "✅ Підписатися"           # Украинский
+])
 def handle_subscribe(message):
     uid = message.from_user.id
     if is_subscribed(uid):
@@ -210,7 +262,10 @@ def handle_subscribe(message):
         bot.send_message(uid, "Вы уже подписаны ✅", reply_markup=before)
         return
 
+    # Добавляем пользователя в базу
     add_subscriber(uid)
+
+    # Просим выбрать язык
     bot.send_message(uid, "Выберите язык:", reply_markup=kb_languages_markup())
 
 @bot.message_handler(func=lambda m: m.text in list(PRESENTATIONS.keys()))
@@ -244,7 +299,16 @@ def handle_marketing_choice(message):
     else:
         bot.send_message(uid, "Ок — вы можете изменить своё решение о рассылке в любое время:", reply_markup=kb_marketing_bottom())
 
-@bot.message_handler(func=lambda m: m.text == "❌ Отписаться")
+@bot.message_handler(func=lambda m: m.text in [
+    "❌ Отписаться",        # Русский
+    "❌ Unsubscribe",       # Английский
+    "❌ Anuluj subskrypcję",  # Польский
+    "❌ Cancelar suscripción", # Испанский
+    "❌ Abbestellen",          # Немецкий
+    "❌ Se désabonner",        # Французский
+    "❌ Жазылымнан бас тарту", # Казахский
+    "❌ Відписатися"           # Украинский
+])
 def handle_unsubscribe(message):
     uid = message.from_user.id
     remove_subscriber(uid)
@@ -276,31 +340,52 @@ def cmd_subscribers(message):
 
 @bot.message_handler(commands=["broadcast"])
 def safe_broadcast(message):
+    global is_broadcasting
     if message.from_user.id != ADMIN_ID:
         bot.reply_to(message, "⛔ У вас нет доступа")
         return
+
+    if is_broadcasting:
+        bot.reply_to(message, "⛔ Рассылка уже выполняется. Подождите.")
+        return
+
     text = message.text.replace("/broadcast", "", 1).strip()
     if not text:
         bot.reply_to(message, "Укажите текст после /broadcast")
         return
+
     users = get_all_subscribers()
     failed = []
     removed_count = 0
     chunks = [text[i:i+4000] for i in range(0, len(text), 4000)]
     batch_size = 50
     pause = 1
-    for i in range(0, len(users), batch_size):
-        batch = users[i:i+batch_size]
-        for uid in batch:
-            for chunk in chunks:
-                try:
-                    bot.send_message(uid, chunk)
-                except Exception as e:
-                    failed.append({"user_id": uid, "error": str(e)})
-                    remove_subscriber(uid)
-                    removed_count += 1
-        time.sleep(pause)
-    bot.reply_to(message, f"✅ Рассылка завершена. Не дошло: {len(failed)}\n🗑 Удалено: {removed_count}")
+
+    is_broadcasting = True
+    logging.info(f"safe_broadcast: начало рассылки. users={len(users)} chunks={len(chunks)}")
+    try:
+        for i in range(0, len(users), batch_size):
+            batch = users[i:i+batch_size]
+            for uid in batch:
+                for chunk in chunks:
+                    try:
+                        bot.send_message(uid, chunk)
+                    except Exception as e:
+                        logging.warning(f"safe_broadcast: ошибка отправки user={uid}: {e}")
+                        failed.append({"user_id": uid, "error": str(e)})
+                        try:
+                            remove_subscriber(uid)
+                            removed_count += 1
+                        except Exception:
+                            logging.exception(f"safe_broadcast: ошибка удаления user={uid}")
+            time.sleep(pause)
+        logging.info(f"safe_broadcast: рассылка завершена. не доставлено={len(failed)} удалено={removed_count}")
+        bot.reply_to(message, f"✅ Рассылка завершена. Не дошло: {len(failed)}\n🗑 Удалено: {removed_count}")
+    except Exception as e:
+        logging.exception(f"safe_broadcast: фатальная ошибка рассылки: {e}")
+        bot.reply_to(message, "⛔ Произошла ошибка во время рассылки. Смотри логи.")
+    finally:
+        is_broadcasting = False
 
 @bot.message_handler(commands=["status"])
 def cmd_status(message):
@@ -335,9 +420,13 @@ def index():
 
 @app.route(f"/{BOT_TOKEN}", methods=["POST"])
 def webhook():
-    json_str = request.get_data().decode("utf-8")
-    update = telebot.types.Update.de_json(json_str)
-    bot.process_new_updates([update])
+    try:
+        json_str = request.get_data().decode("utf-8")
+        update = telebot.types.Update.de_json(json_str)
+        bot.process_new_updates([update])
+    except Exception as e:
+        logging.exception(f"webhook: ошибка при обработке update: {e}")
+        return "Error", 500
     return "OK", 200
 
 # ===== Startup =====
@@ -349,8 +438,8 @@ if __name__ == "__main__":
         except Exception:
             pass
         ok = bot.set_webhook(url=WEBHOOK_URL)
-        print("set_webhook ->", ok, "WEBHOOK_URL:", WEBHOOK_URL)
+        logging.info(f"set_webhook -> {ok} WEBHOOK_URL: {WEBHOOK_URL}")
     else:
-        print("WEBHOOK_URL не задан — укажи его в переменных окружения")
+        logging.warning("WEBHOOK_URL не задан — укажи его в переменных окружения")
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port)
