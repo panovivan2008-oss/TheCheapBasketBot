@@ -26,7 +26,7 @@ if not BOT_TOKEN:
 
 bot = telebot.TeleBot(BOT_TOKEN)
 app = Flask(__name__)
-DB_PATH = os.path.join("/tmp", "subscribers.db")
+DB_PATH = os.path.join(".", "subscribers.db")  # хранение в корне проекта
 is_broadcasting = False
 
 # ===== Database helpers =====
@@ -149,6 +149,7 @@ def kb_marketing_bottom():
     kb.add("✅ Разрешаю рассылку", "❌ Не хочу рассылку")
     return kb
 
+
 def get_main_panel(user_id, lang_code=None):
     kb = types.ReplyKeyboardMarkup(resize_keyboard=True)
     kb.add("❌ Отписаться")
@@ -159,9 +160,11 @@ def get_main_keyboard(user_id: int):
     kb = types.ReplyKeyboardMarkup(resize_keyboard=True)
     if is_subscribed(user_id):
         kb.add("❌ Отписаться")
+        kb.add("Изменить рассылку")  # кнопка для изменения решения
     else:
         kb.add("✅ Подписаться")
     return kb
+
 
 # ===== Presentations =====
 PRESENTATIONS = {
@@ -228,7 +231,11 @@ PRESENTATIONS = {
 @bot.message_handler(commands=["start"])
 def handle_start(message):
     uid = message.from_user.id
-    bot.send_message(uid, "Привет! Используй кнопки ниже.", reply_markup=get_main_keyboard(uid))
+    if is_subscribed(uid):
+        bot.send_message(uid, "Вы уже подписаны ✅", reply_markup=get_main_keyboard(uid))
+    else:
+        bot.send_message(uid, "Привет! Нажмите кнопку ниже, чтобы подписаться на уведомления о товарах.", reply_markup=get_main_keyboard(uid))
+
 
 @bot.message_handler(func=lambda m: m.text == "✅ Подписаться")
 def subscribe_user(message):
